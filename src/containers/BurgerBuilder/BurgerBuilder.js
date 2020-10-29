@@ -18,16 +18,23 @@ const INGREDIENT_PRICS = {
 
 class BurgerBuilder extends Component {
   state = {
-    ingredient: {
-      salad: 0,
-      bacon: 0,
-      cheese: 0,
-      meat: 0
-    },
+    ingredient: null,
     totalPrice: 4,
     purchasable: false,
     purchasing: false,
-    isLoading: false
+    isLoading: false,
+    error: false
+  };
+
+  componentDidMount = () => {
+    axios
+      .get("https://burger-app-4bcc5.firebaseio.com/ingredients.json")
+      .then((res) => {
+        this.setState({ ingredient: res.data });
+      })
+      .catch((err) => {
+        this.setState({ error: true });
+      });
   };
 
   updatePurchasable = (ingredients) => {
@@ -135,17 +142,48 @@ class BurgerBuilder extends Component {
       disabledInfo[key] = disabledInfo[key] <= 0;
     }
 
-    let orderSummary = (
-      <OrderSummary
-        ingredients={this.state.ingredient}
-        total={this.state.totalPrice}
-        purchaseCanceled={this.purchaseCancelHandler}
-        purchaseContinued={this.purchaseContiueHandler}
-      />
-    );
+    let orderSummary = null;
+
+    let burger = <Spinner />;
+
+    if (this.state.ingredient) {
+      burger = (
+        <Auxilary>
+          <Burger
+            ingredient={this.state.ingredient}
+            // price={this.state.totalPrice}
+          />
+          <BuildControls
+            ingredientAdded={this.addIngredientHandler}
+            ingredientRemoved={this.removeIngredientHandler}
+            disabled={disabledInfo}
+            price={this.state.totalPrice}
+            purchasable={this.state.purchasable}
+            ordered={this.purchasingHandler}
+          />
+        </Auxilary>
+      );
+
+      orderSummary = (
+        <OrderSummary
+          ingredients={this.state.ingredient}
+          total={this.state.totalPrice}
+          purchaseCanceled={this.purchaseCancelHandler}
+          purchaseContinued={this.purchaseContiueHandler}
+        />
+      );
+    }
 
     if (this.state.isLoading) {
       orderSummary = <Spinner />;
+    }
+
+    if (this.state.error) {
+      burger = (
+        <p style={{ textAlign: "center" }}>
+          Error in <span>Loading</span> from server
+        </p>
+      );
     }
 
     return (
@@ -153,19 +191,7 @@ class BurgerBuilder extends Component {
         <Modal show={this.state.purchasing} remove={this.purchaseCancelHandler}>
           {orderSummary}
         </Modal>
-
-        <Burger
-          ingredient={this.state.ingredient}
-          // price={this.state.totalPrice}
-        />
-        <BuildControls
-          ingredientAdded={this.addIngredientHandler}
-          ingredientRemoved={this.removeIngredientHandler}
-          disabled={disabledInfo}
-          price={this.state.totalPrice}
-          purchasable={this.state.purchasable}
-          ordered={this.purchasingHandler}
-        />
+        {burger}
       </Auxilary>
     );
   }
